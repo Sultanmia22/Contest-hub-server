@@ -79,6 +79,9 @@ async function run() {
       try {
         const contestData = req.body;
         contestData.status = 'pending'
+        contestData.participantsCount = 0;
+        contestData.winner = null;
+        contestData.createdAt = new Date()
         const result = await contestCollection.insertOne(contestData);
         res.json(result)
       }
