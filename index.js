@@ -119,7 +119,18 @@ async function run() {
       }
     })
 
+    // update and edit contest information 
+    app.patch('/contest-update/:contestId',async(req,res) => {
+      const contestId = req.params.contestId;
+      const updateData = req.body;
+      const query = {_id: new ObjectId(contestId)}
+      const updateDoc = {
+        $set: updateData
+      }
 
+      const result = await contestCollection.updateOne(query,updateDoc);
+      res.json(result);
+    })
 
 
     // Role Releted api here 
