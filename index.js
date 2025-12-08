@@ -2,7 +2,7 @@ require('dotenv').config()
 const express = require('express')
 const app = express()
 const cors = require('cors')
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const admin = require("firebase-admin");
 const port = 3000
 
@@ -85,8 +85,53 @@ async function run() {
         const result = await contestCollection.insertOne(contestData);
         res.json(result)
       }
-      catch(er) {
+      catch (er) {
         console.log(er)
+        res.json(er)
+      }
+    })
+
+    // get contest for my contest page 
+    app.get('/my-contest', async (req, res) => {
+      try {
+        const email = req.query.email;
+        const query = { creatorEmail: email };
+        const result = await contestCollection.find(query).toArray();
+        res.json(result)
+      }
+      catch (er) {
+        console.log(er)
+        res.json(er)
+      }
+    })
+
+    // get contest for edit and update 
+    app.get('/edit-contest/:id', async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const result = await contestCollection.findOne(query);
+        res.json(result);
+      }
+      catch (er) {
+        console.log(er);
+        res.json(er);
+      }
+    })
+
+
+
+
+    // Role Releted api here 
+    app.get('/role-check', async (req, res) => {
+      try {
+        const email = req.query.email;
+        const query = { email };
+        const result = await userCollection.findOne(query);
+        res.json({ role: result?.role })
+      }
+      catch (er) {
+        console.log(er);
         res.json(er)
       }
     })
