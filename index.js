@@ -31,7 +31,7 @@ const verifyFbToken = async (req, res, next) => {
   }
   catch (er) {
     console.log(er)
-    return res.status(401).send({ message: 'Unauthorized Access!', err })
+    return res.status(401).send({ message: 'Unauthorized Access!', er })
   }
 }
 
@@ -56,6 +56,24 @@ async function run() {
     const userCollection = db.collection('users')
     const contestCollection = db.collection('contests')
 
+
+    /* ------------ ADMIN , CREATOR AND USER ROLE HERE  */
+    const verifyAdminRole = async (req,res,next) => {
+      try{
+        const email = req.tokenEmail;
+        const user = await userCollection.findOne({email})
+        if(!user) return res.status(404).json({ message: 'User not found' });
+
+        if(user?.role !== 'admin'){
+          return res.status(403).json({message: 'Admin only Actions!'})
+        }
+        next()
+      }
+      catch(er){
+        console.log(er)
+        return res.status(500).json({ message: 'Server error', err });
+      }
+    } 
 
 
     // insert user data in database
@@ -154,19 +172,19 @@ async function run() {
     /* ------------------------ ADMIN SECTION ALL API HERE --------------------------  */
 
     // GET USER DATA FOR MANAGE USER  
-    app.get('/manage-user',async(req,res) => {
+    app.get('/manage-user',verifyFbToken,verifyAdminRole,async(req,res) => {
       try{
         const result = await userCollection.find().toArray();
         res.json(result)
       }
       catch(er){
         console.log(er)
-        res.json(er)
+        return res.status(500).json({ message: 'Server error' });
       }
     });
 
     // CHANGE USER ROLE BY ADMIN 
-    app.patch('/change-role/:id',async(req,res) => {
+    app.patch('/change-role/:id',verifyFbToken,verifyAdminRole,async(req,res) => {
       try{
         const id = req.params.id;
         const {role} = req.body;
@@ -183,12 +201,12 @@ async function run() {
       }
       catch(er){
         console.log(er);
-        res.json(er)
+        return res.status(500).json({ message: 'Server error' });
       }
     })
 
     // GET ALL  CONTEST FOR  Confirm | Reject | Delete
-    app.get('/pending-allcontest',async(req,res) => {
+    app.get('/pending-allcontest',verifyFbToken,verifyAdminRole,async(req,res) => {
       try{
         
         const result = await contestCollection.find().toArray();
@@ -196,12 +214,12 @@ async function run() {
       }
       catch(er){
         console.log(er);
-        res.json(er)
+        return res.status(500).json({ message: 'Server error' });
       }
     }) 
 
     // UPDATE CONTEST STATUS BY ADMIN
-    app.patch('/update-contest-status/:statusId',async(req,res) => {
+    app.patch('/update-contest-status/:statusId',verifyFbToken,verifyAdminRole,async(req,res) => {
       try{
         const statusId = req.params.statusId;
         const {status} = req.body
@@ -217,16 +235,22 @@ async function run() {
       }
       catch(er){
         console.log(er);
-        res.json(er)
+        return res.status(500).json({ message: 'Server error' });
       }
     })
 
     // DELETE CONTEST API BY ADMIN
-    app.delete('/contest/delete-by-admin/:deleteId',async(req,res) => {
-      const deleteId = req.params.deleteId;
+    app.delete('/contest/delete-by-admin/:deleteId',verifyFbToken,verifyAdminRole,async(req,res) => {
+      try{
+        const deleteId = req.params.deleteId;
       const query = {_id: new ObjectId(deleteId)}
       const result = await contestCollection.deleteOne(query);
       res.json(result);
+      }
+      catch(er){
+        console.log(er)
+        return res.status(500).json({ message: 'Server error' });
+      }
     }) 
 
 
@@ -240,7 +264,7 @@ async function run() {
       }
       catch (er) {
         console.log(er);
-        res.json(er)
+        return res.status(500).json({ message: 'Server error' });
       }
     })
 
