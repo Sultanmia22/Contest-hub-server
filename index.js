@@ -153,7 +153,7 @@ async function run() {
 
     /* ------------------------ ADMIN SECTION ALL API HERE --------------------------  */
 
-    // MANAGE USER API 
+    // GET DATA FOR MANAGE USER  
     app.get('/manage-user',async(req,res) => {
       try{
 
@@ -164,8 +164,29 @@ async function run() {
         console.log(er)
         res.json(er)
       }
-    })
+    });
 
+    // CHANGE USER ROLE BY ADMIN 
+    app.patch('/change-role/:id',async(req,res) => {
+      try{
+        const id = req.params.id;
+        const {role} = req.body;
+        const query = {_id: new ObjectId(id)};
+
+        const updateDoc = {
+          $set: {
+            role: role
+          }
+        }
+
+        const result = await userCollection.updateOne(query,updateDoc);
+        res.json(result);
+      }
+      catch(er){
+        console.log(er);
+        res.json(er)
+      }
+    })
 
 
     // Role Releted api here 
