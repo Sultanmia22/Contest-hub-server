@@ -75,7 +75,7 @@ async function run() {
 
 
     /* ------------------------ CREATOR SECTION ALL API HERE --------------------------  */
-    
+
     //Add contest api 
     app.post('/add-contest', async (req, res) => {
       try {
@@ -156,7 +156,8 @@ async function run() {
     // MANAGE USER API 
     app.get('/manage-user',async(req,res) => {
       try{
-        const result = await userCollection.find().toArray();
+
+        const result = await userCollection.find({role:'user'}).toArray();
         res.json(result)
       }
       catch(er){
