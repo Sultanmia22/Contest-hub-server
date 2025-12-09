@@ -221,6 +221,14 @@ async function run() {
       }
     })
 
+    // DELETE CONTEST API BY ADMIN
+    app.delete('/contest/delete-by-admin/:deleteId',async(req,res) => {
+      const deleteId = req.params.deleteId;
+      const query = {_id: new ObjectId(deleteId)}
+      const result = await contestCollection.deleteOne(query);
+      res.json(result);
+    }) 
+
 
     // Role Releted api here 
     app.get('/role-check', async (req, res) => {
