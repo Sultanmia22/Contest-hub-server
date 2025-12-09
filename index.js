@@ -153,11 +153,11 @@ async function run() {
 
     /* ------------------------ ADMIN SECTION ALL API HERE --------------------------  */
 
-    // GET DATA FOR MANAGE USER  
+    // GET USER DATA FOR MANAGE USER  
     app.get('/manage-user',async(req,res) => {
       try{
 
-        const result = await userCollection.find({role:'user'}).toArray();
+        const result = await userCollection.find().toArray();
         res.json(result)
       }
       catch(er){
@@ -180,6 +180,40 @@ async function run() {
         }
 
         const result = await userCollection.updateOne(query,updateDoc);
+        res.json(result);
+      }
+      catch(er){
+        console.log(er);
+        res.json(er)
+      }
+    })
+
+    // GET ALL  CONTEST FOR  Confirm | Reject | Delete
+    app.get('/pending-allcontest',async(req,res) => {
+      try{
+        
+        const result = await contestCollection.find().toArray();
+        res.json(result);
+      }
+      catch(er){
+        console.log(er);
+        res.json(er)
+      }
+    }) 
+
+    // UPDATE CONTEST STATUS BY ADMIN
+    app.patch('/update-contest-status/:statusId',async(req,res) => {
+      try{
+        const statusId = req.params.statusId;
+        const {status} = req.body
+        const query = {_id: new ObjectId(statusId)};
+        const updateDoc = {
+          $set:{
+            status:status
+          }
+        }
+
+        const result = await contestCollection.updateOne(query,updateDoc);
         res.json(result);
       }
       catch(er){
