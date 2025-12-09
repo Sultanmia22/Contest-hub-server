@@ -156,7 +156,6 @@ async function run() {
     // GET USER DATA FOR MANAGE USER  
     app.get('/manage-user',async(req,res) => {
       try{
-
         const result = await userCollection.find().toArray();
         res.json(result)
       }
