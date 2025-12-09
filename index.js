@@ -74,6 +74,8 @@ async function run() {
     })
 
 
+    /* ------------------------ CREATOR SECTION ALL API HERE --------------------------  */
+    
     //Add contest api 
     app.post('/add-contest', async (req, res) => {
       try {
@@ -120,17 +122,49 @@ async function run() {
     })
 
     // update and edit contest information 
-    app.patch('/contest-update/:contestId',async(req,res) => {
+    app.patch('/contest-update/:contestId', async (req, res) => {
       const contestId = req.params.contestId;
       const updateData = req.body;
-      const query = {_id: new ObjectId(contestId)}
+      const query = { _id: new ObjectId(contestId) }
       const updateDoc = {
         $set: updateData
       }
 
-      const result = await contestCollection.updateOne(query,updateDoc);
+      const result = await contestCollection.updateOne(query, updateDoc);
       res.json(result);
     })
+
+    //DELETE CONTEST API 
+    app.delete('/delete-contest/:deleteId', async (req, res) => {
+      try {
+        const deleteId = req.params.deleteId;
+        const query = { _id: new ObjectId(deleteId) };
+        const result = await contestCollection.deleteOne(query);
+        res.json(result);
+      }
+      catch(er){
+        console.log(er);
+        res.json(er)
+      }
+    })
+
+
+
+
+    /* ------------------------ ADMIN SECTION ALL API HERE --------------------------  */
+
+    // MANAGE USER API 
+    app.get('/manage-user',async(req,res) => {
+      try{
+        const result = await userCollection.find().toArray();
+        res.json(result)
+      }
+      catch(er){
+        console.log(er)
+        res.json(er)
+      }
+    })
+
 
 
     // Role Releted api here 
