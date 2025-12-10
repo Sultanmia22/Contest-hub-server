@@ -108,6 +108,40 @@ async function run() {
     })
 
 
+    /* ------------------------ USER SECTION ALL API HERE --------------------------  */
+    app.get('/all/contest',async(req,res) => {
+      try{
+         const contestType = req.query.contestType;
+        let query = {}
+
+        if(contestType && contestType !== 'All'){
+          query = {status:'confirmed',contestType}
+        }
+        else{
+          query = {status:'confirmed'}
+        }
+
+        const result = await contestCollection.find(query).sort({participantsCount:-1}).toArray()
+        res.json(result)
+      }
+      catch(er){
+        console.log(er)
+        res.status(500).json({message:'Server error'})
+      }
+    })
+
+
+    app.get('/all-type',async(req,res) => {
+      try{
+        const result = await contestCollection.find({}, { projection: { contestType: 1, _id: 0 } }).toArray()
+        res.json(result)
+      }
+      catch(er){
+        console.log(er)
+      }
+    })
+
+
     /* ------------------------ CREATOR SECTION ALL API HERE --------------------------  */
 
     //Add contest api 
