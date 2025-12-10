@@ -112,14 +112,12 @@ async function run() {
     app.get('/all/contest',async(req,res) => {
       try{
          const contestType = req.query.contestType;
-        let query = {}
+        let query = {status:'confirmed'}
 
-        if(contestType && contestType !== 'All'){
+        if( contestType && contestType !== 'All'){
           query = {status:'confirmed',contestType}
         }
-        else{
-          query = {status:'confirmed'}
-        }
+
 
         const result = await contestCollection.find(query).sort({participantsCount:-1}).toArray()
         res.json(result)
@@ -130,7 +128,7 @@ async function run() {
       }
     })
 
-
+    // Get Contest type 
     app.get('/all-type',async(req,res) => {
       try{
         const result = await contestCollection.find({}, { projection: { contestType: 1, _id: 0 } }).toArray()
