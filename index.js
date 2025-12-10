@@ -58,23 +58,39 @@ async function run() {
 
 
     /* ------------ ADMIN , CREATOR AND USER ROLE HERE  */
-    const verifyAdminRole = async (req,res,next) => {
-      try{
+    const verifyAdminRole = async (req, res, next) => {
+      try {
         const email = req.tokenEmail;
-        const user = await userCollection.findOne({email})
-        if(!user) return res.status(404).json({ message: 'User not found' });
+        const user = await userCollection.findOne({ email })
+        if (!user) return res.status(404).json({ message: 'User not found' });
 
-        if(user?.role !== 'admin'){
-          return res.status(403).json({message: 'Admin only Actions!'})
+        if (user?.role !== 'admin') {
+          return res.status(403).json({ message: 'Admin only Actions!' })
         }
         next()
       }
-      catch(er){
+      catch (er) {
         console.log(er)
         return res.status(500).json({ message: 'Server error', err });
       }
-    } 
+    }
 
+    const verifyCreator = async (req, res, next) => {
+      try {
+        const email = req.tokenEmail;
+        const user = await userCollection.findOne({ email })
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        if (user?.role !== 'creator') {
+          return res.status(403).json({ message: 'Admin only Actions!' })
+        }
+        next()
+      }
+      catch (er) {
+        console.log(er)
+        return res.status(500).json({ message: 'Server error', err });
+      }
+    }
 
     // insert user data in database
     app.post('/user', async (req, res) => {
@@ -95,7 +111,7 @@ async function run() {
     /* ------------------------ CREATOR SECTION ALL API HERE --------------------------  */
 
     //Add contest api 
-    app.post('/add-contest', async (req, res) => {
+    app.post('/add-contest',verifyFbToken,verifyCreator, async (req, res) => {
       try {
         const contestData = req.body;
         contestData.status = 'pending'
@@ -112,7 +128,7 @@ async function run() {
     })
 
     // get contest for my contest page 
-    app.get('/my-contest', async (req, res) => {
+    app.get('/my-contest',verifyFbToken,verifyCreator, async (req, res) => {
       try {
         const email = req.query.email;
         const query = { creatorEmail: email };
@@ -126,7 +142,7 @@ async function run() {
     })
 
     // get contest for edit and update 
-    app.get('/edit-contest/:id', async (req, res) => {
+    app.get('/edit-contest/:id',verifyFbToken,verifyCreator, async (req, res) => {
       try {
         const id = req.params.id;
         const query = { _id: new ObjectId(id) };
@@ -140,7 +156,7 @@ async function run() {
     })
 
     // update and edit contest information 
-    app.patch('/contest-update/:contestId', async (req, res) => {
+    app.patch('/contest-update/:contestId',verifyFbToken,verifyCreator, async (req, res) => {
       const contestId = req.params.contestId;
       const updateData = req.body;
       const query = { _id: new ObjectId(contestId) }
@@ -153,14 +169,14 @@ async function run() {
     })
 
     //DELETE CONTEST API 
-    app.delete('/delete-contest/:deleteId', async (req, res) => {
+    app.delete('/delete-contest/:deleteId',verifyFbToken,verifyCreator, async (req, res) => {
       try {
         const deleteId = req.params.deleteId;
         const query = { _id: new ObjectId(deleteId) };
         const result = await contestCollection.deleteOne(query);
         res.json(result);
       }
-      catch(er){
+      catch (er) {
         console.log(er);
         res.json(er)
       }
@@ -172,23 +188,23 @@ async function run() {
     /* ------------------------ ADMIN SECTION ALL API HERE --------------------------  */
 
     // GET USER DATA FOR MANAGE USER  
-    app.get('/manage-user',verifyFbToken,verifyAdminRole,async(req,res) => {
-      try{
+    app.get('/manage-user', verifyFbToken, verifyAdminRole, async (req, res) => {
+      try {
         const result = await userCollection.find().toArray();
         res.json(result)
       }
-      catch(er){
+      catch (er) {
         console.log(er)
         return res.status(500).json({ message: 'Server error' });
       }
     });
 
     // CHANGE USER ROLE BY ADMIN 
-    app.patch('/change-role/:id',verifyFbToken,verifyAdminRole,async(req,res) => {
-      try{
+    app.patch('/change-role/:id', verifyFbToken, verifyAdminRole, async (req, res) => {
+      try {
         const id = req.params.id;
-        const {role} = req.body;
-        const query = {_id: new ObjectId(id)};
+        const { role } = req.body;
+        const query = { _id: new ObjectId(id) };
 
         const updateDoc = {
           $set: {
@@ -196,62 +212,62 @@ async function run() {
           }
         }
 
-        const result = await userCollection.updateOne(query,updateDoc);
+        const result = await userCollection.updateOne(query, updateDoc);
         res.json(result);
       }
-      catch(er){
+      catch (er) {
         console.log(er);
         return res.status(500).json({ message: 'Server error' });
       }
     })
 
     // GET ALL  CONTEST FOR  Confirm | Reject | Delete
-    app.get('/pending-allcontest',verifyFbToken,verifyAdminRole,async(req,res) => {
-      try{
-        
+    app.get('/pending-allcontest', verifyFbToken, verifyAdminRole, async (req, res) => {
+      try {
+
         const result = await contestCollection.find().toArray();
         res.json(result);
       }
-      catch(er){
+      catch (er) {
         console.log(er);
         return res.status(500).json({ message: 'Server error' });
       }
-    }) 
+    })
 
     // UPDATE CONTEST STATUS BY ADMIN
-    app.patch('/update-contest-status/:statusId',verifyFbToken,verifyAdminRole,async(req,res) => {
-      try{
+    app.patch('/update-contest-status/:statusId', verifyFbToken, verifyAdminRole, async (req, res) => {
+      try {
         const statusId = req.params.statusId;
-        const {status} = req.body
-        const query = {_id: new ObjectId(statusId)};
+        const { status } = req.body
+        const query = { _id: new ObjectId(statusId) };
         const updateDoc = {
-          $set:{
-            status:status
+          $set: {
+            status: status
           }
         }
 
-        const result = await contestCollection.updateOne(query,updateDoc);
+        const result = await contestCollection.updateOne(query, updateDoc);
         res.json(result);
       }
-      catch(er){
+      catch (er) {
         console.log(er);
         return res.status(500).json({ message: 'Server error' });
       }
     })
 
     // DELETE CONTEST API BY ADMIN
-    app.delete('/contest/delete-by-admin/:deleteId',verifyFbToken,verifyAdminRole,async(req,res) => {
-      try{
+    app.delete('/contest/delete-by-admin/:deleteId', verifyFbToken, verifyAdminRole, async (req, res) => {
+      try {
         const deleteId = req.params.deleteId;
-      const query = {_id: new ObjectId(deleteId)}
-      const result = await contestCollection.deleteOne(query);
-      res.json(result);
+        const query = { _id: new ObjectId(deleteId) }
+        const result = await contestCollection.deleteOne(query);
+        res.json(result);
       }
-      catch(er){
+      catch (er) {
         console.log(er)
         return res.status(500).json({ message: 'Server error' });
       }
-    }) 
+    })
 
 
     // Role Releted api here 
