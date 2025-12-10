@@ -111,7 +111,7 @@ async function run() {
     /* ------------------------ CREATOR SECTION ALL API HERE --------------------------  */
 
     //Add contest api 
-    app.post('/add-contest',verifyFbToken,verifyCreator, async (req, res) => {
+    app.post('/add-contest', verifyFbToken, verifyCreator, async (req, res) => {
       try {
         const contestData = req.body;
         contestData.status = 'pending'
@@ -128,7 +128,7 @@ async function run() {
     })
 
     // get contest for my contest page 
-    app.get('/my-contest',verifyFbToken,verifyCreator, async (req, res) => {
+    app.get('/my-contest', verifyFbToken, verifyCreator, async (req, res) => {
       try {
         const email = req.query.email;
         const query = { creatorEmail: email };
@@ -142,7 +142,7 @@ async function run() {
     })
 
     // get contest for edit and update 
-    app.get('/edit-contest/:id',verifyFbToken,verifyCreator, async (req, res) => {
+    app.get('/edit-contest/:id', verifyFbToken, verifyCreator, async (req, res) => {
       try {
         const id = req.params.id;
         const query = { _id: new ObjectId(id) };
@@ -156,7 +156,7 @@ async function run() {
     })
 
     // update and edit contest information 
-    app.patch('/contest-update/:contestId',verifyFbToken,verifyCreator, async (req, res) => {
+    app.patch('/contest-update/:contestId', verifyFbToken, verifyCreator, async (req, res) => {
       const contestId = req.params.contestId;
       const updateData = req.body;
       const query = { _id: new ObjectId(contestId) }
@@ -169,7 +169,7 @@ async function run() {
     })
 
     //DELETE CONTEST API 
-    app.delete('/delete-contest/:deleteId',verifyFbToken,verifyCreator, async (req, res) => {
+    app.delete('/delete-contest/:deleteId', verifyFbToken, verifyCreator, async (req, res) => {
       try {
         const deleteId = req.params.deleteId;
         const query = { _id: new ObjectId(deleteId) };
@@ -244,6 +244,12 @@ async function run() {
           $set: {
             status: status
           }
+        }
+
+        const contest = await contestCollection.findOne(query);
+
+        if (contest.status === "approved") {
+          return res.status(403).json({ message: "Cannot edit an approved contest" });
         }
 
         const result = await contestCollection.updateOne(query, updateDoc);
