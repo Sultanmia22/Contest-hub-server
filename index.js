@@ -4,7 +4,9 @@ const app = express()
 const cors = require('cors')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const admin = require("firebase-admin");
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
 const port = 3000
+
 
 // Midleware
 app.use(express.json())
@@ -55,6 +57,7 @@ async function run() {
     const db = client.db('contestHub-db');
     const userCollection = db.collection('users')
     const contestCollection = db.collection('contests')
+    const perticipantCollection = db.collection('perticipants')
 
 
     /* ------------ ADMIN , CREATOR AND USER ROLE HERE  */
@@ -109,35 +112,126 @@ async function run() {
 
 
     /* ------------------------ USER SECTION ALL API HERE --------------------------  */
-    app.get('/all/contest',async(req,res) => {
-      try{
-         const contestType = req.query.contestType;
-        let query = {status:'confirmed'}
+    app.get('/all/contest', async (req, res) => {
+      try {
+        const contestType = req.query.contestType;
+        let query = { status: 'confirmed' }
 
-        if( contestType && contestType !== 'All'){
-          query = {status:'confirmed',contestType}
+        if (contestType && contestType !== 'All') {
+          query = { status: 'confirmed', contestType }
         }
 
 
-        const result = await contestCollection.find(query).sort({participantsCount:-1}).toArray()
+        const result = await contestCollection.find(query).sort({ participantsCount: -1 }).toArray()
         res.json(result)
       }
-      catch(er){
+      catch (er) {
         console.log(er)
-        res.status(500).json({message:'Server error'})
+        res.status(500).json({ message: 'Server error' })
       }
     })
 
     // Get Contest type 
-    app.get('/all-type',async(req,res) => {
-      try{
+    app.get('/all-type', async (req, res) => {
+      try {
         const result = await contestCollection.find({}, { projection: { contestType: 1, _id: 0 } }).toArray()
         res.json(result)
       }
-      catch(er){
+      catch (er) {
         console.log(er)
       }
     })
+
+
+    // GET DATA FOR DETAILS PAGE 
+    app.get('/deltails/contest/:detailsId', async (req, res) => {
+      try {
+        const detailsId = req.params.detailsId;
+        const query = { _id: new ObjectId(detailsId) };
+        const result = await contestCollection.findOne(query);
+        res.json(result);
+      }
+      catch (er) {
+        console.log(er)
+        res.status(500).json({ message: 'Server error' })
+      }
+    })
+
+    // PAYMENT API 
+    app.post('/create-checkout-session', async (req, res) => {
+      try {
+        const paymentInfo = req.body;
+        const session = await stripe.checkout.sessions.create({
+          line_items: [
+            {
+              price_data: {
+                currency: 'USD',
+                unit_amount: Number(paymentInfo.entryPrice) * 100,
+                product_data: {
+                  name: paymentInfo.constestName,
+                  images: paymentInfo.contestImage ? [paymentInfo.contestImage] : [],
+                }
+              },
+              quantity: 1,
+            },
+          ],
+          mode: 'payment',
+          customer_email: paymentInfo.perticipantEmail,
+          metadata: {
+            contestId: paymentInfo.contestId,
+            creatorEmail: paymentInfo.creatorEmail,
+            perticipantEmail: paymentInfo.perticipantEmail,
+            createdAt: paymentInfo.createdAt,
+          },
+          success_url: `${process.env.CLIENT_DOMAIN_SITE}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${process.env.CLIENT_DOMAIN_SITE}/payment-cancel`,
+        });
+        res.json({ url: session.url })
+      }
+
+      catch (er) {
+        console.log(er)
+        res.status(500).json({ message: 'Server Error' })
+      }
+    });
+
+
+    // POST INFORMATION FROM PAYMENT HISTORY AFTER PAYMENT
+    app.post('/payment-success', async (req, res) => {
+      try {
+        const { sessionId } = req.body;
+        const session = await stripe.checkout.sessions.retrieve(sessionId);
+        console.log(session)
+        // update perticipant Count 
+        const contestId = session.metadata.contestId      
+        const queryContestId = {_id: new ObjectId(contestId)}
+        const updatePerticipantCount = {
+          $inc: {
+            participantsCount:1
+            }
+        }
+        const updateCount = await contestCollection.updateOne(queryContestId,updatePerticipantCount)
+
+        const paymentData = {
+          transactionId :session.payment_intent,
+          createdAt: session.metadata.createdAt,
+          amount: session.amount_total,
+          creatorEmail: session.metadata.creatorEmail,
+          perticipantEmail: session.metadata.perticipantEmail,
+          paymentStatus:session.payment_status,
+          contestId: session.metadata.contestId,
+        }
+
+        const perticipantResult = await perticipantCollection.insertOne(paymentData)
+
+        res.json({transactionId :session.payment_intent, createdAt: session.metadata.createdAt,amount: session.amount_total})
+      }
+      catch (er) {
+        console.log(er);
+        res.status(500).json({ message: 'Server Error' });
+      }
+    })
+
 
 
     /* ------------------------ CREATOR SECTION ALL API HERE --------------------------  */
@@ -149,7 +243,7 @@ async function run() {
         contestData.status = 'pending'
         contestData.participantsCount = 0;
         contestData.winner = null;
-        contestData.createdAt = new Date()
+        contestData.createdAt = new Date().toISOString()
         const result = await contestCollection.insertOne(contestData);
         res.json(result)
       }
@@ -321,6 +415,8 @@ async function run() {
         return res.status(500).json({ message: 'Server error' });
       }
     })
+
+
 
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
