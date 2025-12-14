@@ -215,7 +215,7 @@ async function run() {
         const paymentData = {
           transactionId :session.payment_intent,
           createdAt: session.metadata.createdAt,
-          amount: session.amount_total,
+          amount: session.amount_total / 100,
           creatorEmail: session.metadata.creatorEmail,
           perticipantEmail: session.metadata.perticipantEmail,
           paymentStatus:session.payment_status,
@@ -224,7 +224,7 @@ async function run() {
 
         const perticipantResult = await perticipantCollection.insertOne(paymentData)
 
-        res.json({transactionId :session.payment_intent, createdAt: session.metadata.createdAt,amount: session.amount_total})
+        res.json({transactionId :session.payment_intent, createdAt: session.metadata.createdAt,amount: session.amount_total / 100})
       }
       catch (er) {
         console.log(er);
