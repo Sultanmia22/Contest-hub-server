@@ -201,7 +201,7 @@ async function run() {
       try {
         const { sessionId } = req.body;
         const session = await stripe.checkout.sessions.retrieve(sessionId);
-        
+
 
         // update perticipant Count 
         const contestId = session.metadata.contestId
@@ -211,10 +211,10 @@ async function run() {
             participantsCount: 1
           },
 
-          $addToSet:{
+          $addToSet: {
             perticipants: {
               email: session.metadata.perticipantEmail,
-              status:session.payment_status
+              status: session.payment_status
             }
           }
         }
@@ -242,37 +242,60 @@ async function run() {
 
 
     // MY PERTICIPENT contest
-    app.get('/my-perticipantContest',async(req,res) => {
-      try{
+    app.get('/my-perticipantContest', async (req, res) => {
+      try {
         const perticipantEmail = req.query.perticipantEmail;
-        const query = { "perticipants.email":perticipantEmail}
+        const query = { "perticipants.email": perticipantEmail }
         const contests = await contestCollection.find(query).sort({ deadline: 1 }).toArray()
-        const filterContest = contests.map( contest => ({
+        const filterContest = contests.map(contest => ({
           ...contest,
-         perticipants: contest.perticipants.filter(p => p.email === perticipantEmail)
-        }) )
+          perticipants: contest.perticipants.filter(p => p.email === perticipantEmail)
+        }))
         res.json(filterContest);
       }
-      catch(er){
+      catch (er) {
         console.log(er);
-        res.status(500).json({message:'Server Error'});
+        res.status(500).json({ message: 'Server Error' });
       }
     })
 
-    
-    // GET PERTICIPANT INFO CONTEST API 
-    app.get('/payment-status',async(req,res) => {
-      try{
-        const {contestId,perticipantEmail} = req.query;
 
-        const query = {contestId,perticipantEmail, paymentStatus: "paid"}
+    // GET PERTICIPANT INFO CONTEST API 
+    app.get('/payment-status', async (req, res) => {
+      try {
+        const { contestId, perticipantEmail } = req.query;
+
+        const query = { contestId, perticipantEmail, paymentStatus: "paid" }
 
         const ispaid = await perticipantCollection.findOne(query);
 
-        res.json({paid:!!ispaid})
+        res.json({ paid: !!ispaid })
+      }
+      catch (er) {
+        console.log(er)
+      }
+    })
+
+
+    // SUBMIT TASK
+    app.post('/submit-task', async (req, res) => {
+      try {
+        const { contestId, perticipantEmail } = req.query;
+        const {submitedInfo} = req.body;
+        const query = { contestId, perticipantEmail };
+
+        const updateDoc = {
+          $set: {
+            submitedInfo
+          }
+        }
+
+        const result = await perticipantCollection.updateOne(query, updateDoc)
+        res.json(result);
       }
       catch(er){
         console.log(er)
+        res.status(500).json({message:'Server Error'})
       }
     })
 
