@@ -201,30 +201,38 @@ async function run() {
       try {
         const { sessionId } = req.body;
         const session = await stripe.checkout.sessions.retrieve(sessionId);
-        console.log(session)
+        
+
         // update perticipant Count 
-        const contestId = session.metadata.contestId      
-        const queryContestId = {_id: new ObjectId(contestId)}
+        const contestId = session.metadata.contestId
+        const queryContestId = { _id: new ObjectId(contestId) }
         const updatePerticipantCount = {
           $inc: {
-            participantsCount:1
+            participantsCount: 1
+          },
+
+          $addToSet:{
+            perticipants: {
+              email: session.metadata.perticipantEmail,
+              status:session.payment_status
             }
+          }
         }
-        const updateCount = await contestCollection.updateOne(queryContestId,updatePerticipantCount)
+        const updateCount = await contestCollection.updateOne(queryContestId, updatePerticipantCount)
 
         const paymentData = {
-          transactionId :session.payment_intent,
+          transactionId: session.payment_intent,
           createdAt: session.metadata.createdAt,
           amount: session.amount_total / 100,
           creatorEmail: session.metadata.creatorEmail,
           perticipantEmail: session.metadata.perticipantEmail,
-          paymentStatus:session.payment_status,
+          paymentStatus: session.payment_status,
           contestId: session.metadata.contestId,
         }
 
         const perticipantResult = await perticipantCollection.insertOne(paymentData)
 
-        res.json({transactionId :session.payment_intent, createdAt: session.metadata.createdAt,amount: session.amount_total / 100})
+        res.json({ transactionId: session.payment_intent, createdAt: session.metadata.createdAt, amount: session.amount_total / 100 })
       }
       catch (er) {
         console.log(er);
@@ -232,6 +240,41 @@ async function run() {
       }
     })
 
+
+    // MY PERTICIPENT contest
+    app.get('/my-perticipantContest',async(req,res) => {
+      try{
+        const perticipantEmail = req.query.perticipantEmail;
+        const query = { "perticipants.email":perticipantEmail}
+        const contests = await contestCollection.find(query).sort({ deadline: 1 }).toArray()
+        const filterContest = contests.map( contest => ({
+          ...contest,
+         perticipants: contest.perticipants.filter(p => p.email === perticipantEmail)
+        }) )
+        res.json(filterContest);
+      }
+      catch(er){
+        console.log(er);
+        res.status(500).json({message:'Server Error'});
+      }
+    })
+
+    
+    // GET PERTICIPANT INFO CONTEST API 
+    app.get('/payment-status',async(req,res) => {
+      try{
+        const {contestId,perticipantEmail} = req.query;
+
+        const query = {contestId,perticipantEmail, paymentStatus: "paid"}
+
+        const ispaid = await perticipantCollection.findOne(query);
+
+        res.json({paid:!!ispaid})
+      }
+      catch(er){
+        console.log(er)
+      }
+    })
 
 
     /* ------------------------ CREATOR SECTION ALL API HERE --------------------------  */
@@ -244,6 +287,7 @@ async function run() {
         contestData.participantsCount = 0;
         contestData.winner = null;
         contestData.createdAt = new Date().toISOString()
+        contestData.perticipants = []
         const result = await contestCollection.insertOne(contestData);
         res.json(result)
       }
