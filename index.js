@@ -181,6 +181,7 @@ async function run() {
             contestId: paymentInfo.contestId,
             creatorEmail: paymentInfo.creatorEmail,
             perticipantEmail: paymentInfo.perticipantEmail,
+            perticipantName: paymentInfo.perticipantName,
             createdAt: paymentInfo.createdAt,
           },
           success_url: `${process.env.CLIENT_DOMAIN_SITE}/payment-success?session_id={CHECKOUT_SESSION_ID}`,
@@ -215,7 +216,7 @@ async function run() {
             perticipants: {
               email: session.metadata.perticipantEmail,
               status: session.payment_status
-            }
+            },
           }
         }
         const updateCount = await contestCollection.updateOne(queryContestId, updatePerticipantCount)
@@ -226,6 +227,7 @@ async function run() {
           amount: session.amount_total / 100,
           creatorEmail: session.metadata.creatorEmail,
           perticipantEmail: session.metadata.perticipantEmail,
+          perticipantName: session.metadata.perticipantName,
           paymentStatus: session.payment_status,
           contestId: session.metadata.contestId,
         }
@@ -277,27 +279,32 @@ async function run() {
     })
 
 
-    // SUBMIT TASK
+    // SUBMIT TASK store database
     app.post('/submit-task', async (req, res) => {
       try {
         const { contestId, perticipantEmail } = req.query;
-        const {submitedInfo} = req.body;
+        const { submitedInfo, submitLink } = req.body;
         const query = { contestId, perticipantEmail };
 
         const updateDoc = {
           $set: {
-            submitedInfo
+            perticipantContent: {
+              submitedInfo,
+              submitLink,
+            },
+            submitedDate: new Date().toISOString()
           }
         }
 
         const result = await perticipantCollection.updateOne(query, updateDoc)
         res.json(result);
       }
-      catch(er){
+      catch (er) {
         console.log(er)
-        res.status(500).json({message:'Server Error'})
+        res.status(500).json({ message: 'Server Error' })
       }
     })
+
 
 
     /* ------------------------ CREATOR SECTION ALL API HERE --------------------------  */
@@ -375,6 +382,57 @@ async function run() {
       }
     })
 
+    // GET ALL SUBMITED TASK AND INFO 
+    app.get('/all-submit-task', verifyFbToken, verifyCreator, async (req, res) => {
+      try {
+        const { creatorEmail } = req.query;
+        const query = { creatorEmail: creatorEmail };
+        const result = await perticipantCollection.find(query).toArray()
+        res.json(result)
+      }
+      catch (er) {
+        console.log(er)
+        res.status(500).json({ message: 'Server Error' })
+      }
+    })
+
+    // Declare winner
+    app.patch('/declare-winner', verifyFbToken, verifyCreator, async (req, res) => {
+      try {
+        const { contestId, creatorEmail } = req.query;
+        const {perticipant} = req.body;
+        const query = { contestId, creatorEmail }
+        const contestQuery = { _id: new ObjectId(contestId) }
+        
+        const contest = await contestCollection.findOne(contestQuery)
+        if (contest.winner !== null) {
+          return res.json({ winnerDeclared: true })
+        }
+
+        const winnerUpdate = {
+          $set: {
+
+            winner: perticipant
+          }
+        }
+
+        const setWinner = await contestCollection.updateOne(contestQuery,winnerUpdate)
+
+        const updateDoc = {
+          $set: {
+            winner: true,
+            winnerSetAt: new Date()
+          }
+        }
+
+        const result = await perticipantCollection.updateOne(query, updateDoc)
+        res.json(result)
+      }
+      catch (er) {
+        console.log(er)
+        res.status(500).json({ message: 'Server Error' })
+      }
+    })
 
 
 
