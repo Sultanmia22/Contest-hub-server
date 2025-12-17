@@ -303,6 +303,22 @@ async function run() {
         console.log(er)
         res.status(500).json({ message: 'Server Error' })
       }
+    });
+
+
+    // My Winning Contest 
+    app.get('/winning-contests',async (req,res) => {
+      try{
+        const {winningEmail} = req.query;
+        const query = {winner:winningEmail}
+        const result = await contestCollection.find(query).toArray();
+        
+        res.json(result)
+      }
+      catch(er){
+        console.log(er)
+        res.status(500).json({message: 'Server Error'})
+      }
     })
 
 
