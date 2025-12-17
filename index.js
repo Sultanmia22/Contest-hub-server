@@ -307,20 +307,81 @@ async function run() {
 
 
     // My Winning Contest 
-    app.get('/winning-contests',async (req,res) => {
-      try{
-        const {winningEmail} = req.query;
-        const query = {winner:winningEmail}
+    app.get('/winning-contests', async (req, res) => {
+      try {
+        const { winningEmail } = req.query;
+        const query = { winner: winningEmail }
         const result = await contestCollection.find(query).toArray();
-        
+
         res.json(result)
       }
-      catch(er){
+      catch (er) {
         console.log(er)
-        res.status(500).json({message: 'Server Error'})
+        res.status(500).json({ message: 'Server Error' })
+      }
+    });
+
+
+    // Update profile image 
+    app.patch('/update-profileImg', async (req, res) => {
+      try {
+        const { userEmail } = req.query;
+        const { imageURL } = req.body;
+        const query = { email: userEmail }
+
+        const updateDoc = {
+          $set: {
+            image:imageURL
+          }
+        }
+
+        const result = await userCollection.updateOne(query,updateDoc)
+        res.json(result)
+      }
+      catch (er) {
+        console.log(er)
+        res.status(500).json({ message: 'Server Error' })
       }
     })
 
+
+    // Update information 
+    app.patch('/updateinfo',verifyFbToken,async(req,res) => {
+      try{
+        const {email} = req.query;
+        const {name,bio,address} = req.body;
+        const query = {email};
+        const updateDoc = {
+          $set:{
+            name: name,
+            bio:bio,
+            address:address,
+          }
+        }
+
+        const result = await userCollection.updateOne(query,updateDoc);
+        res.json(result)
+      }
+      catch(er){
+        console.log(er);
+        res.status(500).json({message:'Server Error'})
+      }
+    })
+
+
+    // get profile information 
+    app.get('/profileInfo',verifyFbToken,async(req,res) => {
+      try{
+        const {email} = req.query;
+        const query = {email};
+        const result = await userCollection.findOne(query);
+        res.json(result)
+      }
+      catch(er){
+        console.log(er);
+        res.status(500).json({message:'Server Error'})
+      }
+    })
 
 
     /* ------------------------ CREATOR SECTION ALL API HERE --------------------------  */
@@ -416,10 +477,10 @@ async function run() {
     app.patch('/declare-winner', verifyFbToken, verifyCreator, async (req, res) => {
       try {
         const { contestId, creatorEmail } = req.query;
-        const {perticipant} = req.body;
+        const { perticipant } = req.body;
         const query = { contestId, creatorEmail }
         const contestQuery = { _id: new ObjectId(contestId) }
-        
+
         const contest = await contestCollection.findOne(contestQuery)
         if (contest.winner !== null) {
           return res.json({ winnerDeclared: true })
@@ -432,7 +493,7 @@ async function run() {
           }
         }
 
-        const setWinner = await contestCollection.updateOne(contestQuery,winnerUpdate)
+        const setWinner = await contestCollection.updateOne(contestQuery, winnerUpdate)
 
         const updateDoc = {
           $set: {
