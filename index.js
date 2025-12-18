@@ -43,7 +43,7 @@ const uri = process.env.DATA_BASE_URI;
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
-    strict: true,
+    strict: false,
     deprecationErrors: true,
   }
 });
@@ -112,7 +112,8 @@ async function run() {
 
 
     /* ------------------------ USER SECTION ALL API HERE --------------------------  */
-    app.get('/all/contest', async (req, res) => {
+    // popular secation data releted api;
+    app.get('/popular-data', async (req, res) => {
       try {
         const contestType = req.query.contestType;
         let query = { status: 'confirmed' }
@@ -122,7 +123,7 @@ async function run() {
         }
 
 
-        const result = await contestCollection.find(query).sort({ participantsCount: -1 }).toArray()
+        const result = await contestCollection.find(query).sort({ participantsCount: -1 }).limit(5).toArray()
         res.json(result)
       }
       catch (er) {
@@ -131,16 +132,76 @@ async function run() {
       }
     })
 
+
+    // all contest
+    app.get('/all/contest', async (req, res) => {
+      try {
+        const contestType = req.query.contestType;
+        const page = parseInt(req.query.page) || 1;
+        const limit = 10;
+        const skip = (page - 1) * limit;
+
+        let query = { status: 'confirmed' };
+
+        if (contestType && contestType !== 'All') {
+          query.contestType = contestType;
+        }
+
+        const contests = await contestCollection
+          .find(query)
+          .sort({ participantsCount: -1 })
+          .skip(skip)
+          .limit(limit)
+          .toArray();
+
+        const total = await contestCollection.countDocuments(query);
+
+        res.json({
+          contests,
+          total,
+          totalPages: Math.ceil(total / limit),
+          currentPage: page
+        });
+      } catch (er) {
+        console.log(er);
+        res.status(500).json({ message: 'Server error' });
+      }
+    });
+
+
+    /*  app.get('/all/contest', async (req, res) => {
+       try {
+         const contestType = req.query.contestType;
+         let query = { status: 'confirmed' }
+ 
+         if (contestType && contestType !== 'All') {
+           query = { status: 'confirmed', contestType }
+         }
+ 
+ 
+         const result = await contestCollection.find(query).sort({ participantsCount: -1 }).toArray()
+         res.json(result)
+       }
+       catch (er) {
+         console.log(er)
+         res.status(500).json({ message: 'Server error' })
+       }
+     }) */
+
+
     // Get Contest type 
     app.get('/all-type', async (req, res) => {
       try {
-        const result = await contestCollection.find({}, { projection: { contestType: 1, _id: 0 } }).toArray()
+        const result = await contestCollection.distinct('contestType');
         res.json(result)
       }
       catch (er) {
         console.log(er)
+        res.status(500).json({ message: 'Server Error' })
       }
     })
+
+
 
 
     // GET DATA FOR DETAILS PAGE 
@@ -234,7 +295,7 @@ async function run() {
 
         const perticipantResult = await perticipantCollection.insertOne(paymentData)
 
-        res.json({ transactionId: session.payment_intent, createdAt: session.metadata.createdAt, amount: session.amount_total / 100 })
+        res.json({ transactionId: session.payment_intent, createdAt: session.metadata.createdAt, amount: session.amount_total / 100, id: session.metadata.contestId })
       }
       catch (er) {
         console.log(er);
@@ -331,11 +392,11 @@ async function run() {
 
         const updateDoc = {
           $set: {
-            image:imageURL
+            image: imageURL
           }
         }
 
-        const result = await userCollection.updateOne(query,updateDoc)
+        const result = await userCollection.updateOne(query, updateDoc)
         res.json(result)
       }
       catch (er) {
@@ -346,42 +407,94 @@ async function run() {
 
 
     // Update information 
-    app.patch('/updateinfo',verifyFbToken,async(req,res) => {
-      try{
-        const {email} = req.query;
-        const {name,bio,address} = req.body;
-        const query = {email};
+    app.patch('/updateinfo', verifyFbToken, async (req, res) => {
+      try {
+        const { email } = req.query;
+        const { name, bio, address } = req.body;
+        const query = { email };
         const updateDoc = {
-          $set:{
+          $set: {
             name: name,
-            bio:bio,
-            address:address,
+            bio: bio,
+            address: address,
           }
         }
 
-        const result = await userCollection.updateOne(query,updateDoc);
+        const result = await userCollection.updateOne(query, updateDoc);
         res.json(result)
       }
-      catch(er){
+      catch (er) {
         console.log(er);
-        res.status(500).json({message:'Server Error'})
+        res.status(500).json({ message: 'Server Error' })
       }
     })
 
 
     // get profile information 
-    app.get('/profileInfo',verifyFbToken,async(req,res) => {
-      try{
-        const {email} = req.query;
-        const query = {email};
+    app.get('/profileInfo', verifyFbToken, async (req, res) => {
+      try {
+        const { email } = req.query;
+        const query = { email };
         const result = await userCollection.findOne(query);
         res.json(result)
       }
-      catch(er){
+      catch (er) {
         console.log(er);
-        res.status(500).json({message:'Server Error'})
+        res.status(500).json({ message: 'Server Error' })
       }
     })
+
+    // total Perticipant 
+    app.get('/total-participant', async (req, res) => {
+      try {
+        const { email } = req.query;
+        const query = { perticipantEmail: email };
+        const result = await perticipantCollection.find(query).toArray()
+        res.json(result)
+      }
+      catch (er) {
+        console.log(er)
+        res.status(500).json({ message: 'Server Error' });
+      }
+    })
+
+
+    // total Perticipant 
+    app.get('/total-win', async (req, res) => {
+      try {
+        const { email } = req.query;
+        const query = { winner: email };
+        const result = await contestCollection.find(query).toArray()
+        res.json(result)
+      }
+      catch (er) {
+        console.log(er)
+        res.status(500).json({ message: 'Server Error' });
+      }
+    })
+
+    // Leaderboad api 
+    app.get('/leaderboard', async (req, res) => {
+      try {
+        const leaderboard = await perticipantCollection.aggregate([
+          { $match: { winner: true } }, // only winners
+          {
+            $group: {
+              _id: "$perticipantEmail",       // group by user email
+              name: { $first: "$perticipantName" }, // keep user name
+              wins: { $sum: 1 }              // count number of wins
+            }
+          },
+          { $sort: { wins: -1 } }           // sort descending by wins
+        ]).toArray();
+
+        res.json(leaderboard);
+      } catch (err) {
+        console.log(err);
+        res.status(500).json({ message: "Server Error" });
+      }
+    });
+
 
 
     /* ------------------------ CREATOR SECTION ALL API HERE --------------------------  */
