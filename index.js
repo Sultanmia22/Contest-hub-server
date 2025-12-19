@@ -477,15 +477,15 @@ async function run() {
     app.get('/leaderboard', async (req, res) => {
       try {
         const leaderboard = await perticipantCollection.aggregate([
-          { $match: { winner: true } }, // only winners
+          { $match: { winner: true } }, 
           {
             $group: {
-              _id: "$perticipantEmail",       // group by user email
-              name: { $first: "$perticipantName" }, // keep user name
-              wins: { $sum: 1 }              // count number of wins
+              _id: "$perticipantEmail",       
+              name: { $first: "$perticipantName" },
+              wins: { $sum: 1 }              
             }
           },
-          { $sort: { wins: -1 } }           // sort descending by wins
+          { $sort: { wins: -1 } } 
         ]).toArray();
 
         res.json(leaderboard);
@@ -494,6 +494,23 @@ async function run() {
         res.status(500).json({ message: "Server Error" });
       }
     });
+
+
+    // Search Contest 
+    app.get('/searchContest',async(req,res) => {
+      try{
+        const {type} = req.query;
+        const query = {contestType: {$regex:type,$options:'i'}}
+        const result = await contestCollection.find(query).toArray();
+        res.json(result);
+      }
+      catch(er){
+        console.log(er)
+        res.status(500).json({message:'Server Error'});
+      }
+    })
+
+
 
 
 
