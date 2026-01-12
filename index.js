@@ -96,6 +96,26 @@ async function run() {
       }
     }
 
+    // GET DEMO EMAIL DYNAMIC 
+    app.get('/demoEmail',async(req,res) => {
+      try{
+
+        const {email} = req.query
+
+        console.log(email)
+        
+        const query = {role:email}
+
+        const result = await userCollection.findOne(query)
+
+        res.json({email:result.email})
+
+      }
+      catch(er){
+        res.status(500).json('Server Error')
+      }
+    })
+
     // insert user data in database
     app.post('/user', async (req, res) => {
       try {
